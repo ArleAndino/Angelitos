@@ -1,8 +1,11 @@
 ﻿using System;
-using System.Data;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using Telerik.Web.UI;
+using System.Data;
 
 public partial class FlujoGuias : Utilidades.PaginaBase
 {
@@ -25,43 +28,312 @@ public partial class FlujoGuias : Utilidades.PaginaBase
             rgGuias.ClientSettings.Scrolling.UseStaticHeaders = true;
             rgGuias.ShowHeader = true;
             rgGuias.ShowFooter = true;
-            ((SiteMaster)Master).SetTitulo("Flujo Guias Varias Aduanas", "Flujo Guías Varias Aduanas");
+            ((SiteMaster)Master).SetTitulo("Flujo Guias", "Flujo Guías");
 
             mpFlujoGuias.SelectedIndex = 0;
         }
     }
 
-    protected void rgGuias_Init(object sender, EventArgs e)
+    protected void rgGuias_Init(object sender, System.EventArgs e)
     {
-        var menu = rgGuias.FilterMenu;
+        GridFilterMenu menu = rgGuias.FilterMenu;
         menu.Items.RemoveAt(rgGuias.FilterMenu.Items.Count - 2);
     }
 
-    private bool Ingresar { get { return tienePermiso("INGRESAR"); } }
+    protected bool Ingresar { get { return tienePermiso("INGRESAR"); } }
 
-    protected void rgGuias_NeedDataSource(object source, GridNeedDataSourceEventArgs e)
+    protected void rgGuias_NeedDataSource(object source, Telerik.Web.UI.GridNeedDataSourceEventArgs e)
     {
-        LoadGridGuias();
+        loadGridGuias();
     }
 
-    private void LoadGridGuias()
+    private void loadGridGuias()
     {
         try
         {
             conectar();
-            var g2 = new GuiasBO(logApp);
-            if (User.IsInRole("Supervisores"))
-                g2.LoadFLujoGuiasAduana("Supervisores");
-            else if (User.IsInRole("Monitoreo"))
-                g2.LoadFLujoGuiasAduana("Monitoreo");
-            else if (User.IsInRole("Jefe de Monitoreo"))
-                g2.LoadFLujoGuiasAduana("Jefe de Monitoreo");
-            else if (User.IsInRole("Administradores"))
-                g2.LoadFLujoGuiasAduana("Administradores");
-            else if (User.IsInRole("Jefe de Operaciones"))
-                g2.LoadFLujoGuiasAduana("Jefe de Operaciones");
+            GuiasBO g = new GuiasBO(logApp);
+            GuiasBO g2 = new GuiasBO(logApp);
+            AduanasXRutaBO ar = new AduanasXRutaBO(logApp);
+            AduanasBO a = new AduanasBO(logApp);
+            TiempoFlujosBO tf = new TiempoFlujosBO(logApp);
+            DataTable dt = new DataTable();
+            bool agregado = false;
+            g.loadAllGuiasFlujo2();
+            if (g.totalRegistros > 0)
+            {
+                dt.Columns.Add("CorrelativoGuia", typeof(String));
+                dt.Columns.Add("NombreEmpresa", typeof(String));
+                dt.Columns.Add("CodigoRuta", typeof(String));
+                dt.Columns.Add("CiudadOrigen", typeof(String));
+                dt.Columns.Add("CiudadDestino", typeof(String));
+                dt.Columns.Add("Motorista", typeof(String));
+                dt.Columns.Add("CelMotoristaHN", typeof(String));
+                dt.Columns.Add("PlacaCamion", typeof(String));
+                dt.Columns.Add("Estado", typeof(String));
+                dt.Columns.Add("CodEstado", typeof(String));
+                dt.Columns.Add("CodigoAduana", typeof(String));
+                dt.Columns.Add("Fecha", typeof(String));
+                dt.Columns.Add("Producto", typeof(String));
+                dt.Columns.Add("Referencia1", typeof(String));
+                dt.Columns.Add("Referencia2", typeof(String));
+                dt.Columns.Add("Referencia3", typeof(String));
+                dt.Columns.Add("Referencia4", typeof(String));
+                dt.Columns.Add("TipoFlujo", typeof(String));
+                //Nuevos
+                dt.Columns.Add("Factura", typeof(String));
+                dt.Columns.Add("TelSV", typeof(String));
+                dt.Columns.Add("TelGT", typeof(String));
+                dt.Columns.Add("TelNIC", typeof(String));
+                dt.Columns.Add("TelCR", typeof(String));
+                dt.Columns.Add("Proveedor", typeof(String));
+                dt.Columns.Add("TelProv", typeof(String));
+                dt.Columns.Add("Propietario", typeof(String));
+                dt.Columns.Add("TelProp", typeof(String));
+                dt.Columns.Add("Division", typeof(String));
 
-            rgGuias.DataSource = g2.TABLA;
+
+
+
+                for (int i = 0; i < g.totalRegistros; i++)
+                {
+                    if (g.CORRELATIVOGUIA == "FI-20000369")
+                    {
+                        var guia = g.CORRELATIVOGUIA;
+                    }
+                    ar.loadAduanasXRuta(g.CODIGORUTA);
+                    if (ar.totalRegistros > 0)
+                    {
+                        tf.getMaxCorrelativo(g.CORRELATIVOGUIA);
+                        if (tf.totalRegistros > 0)
+                        {
+                            agregado = false;
+                            int cont1 = 5, cont2 = 6;
+                            for (int h = 1; h <= ar.totalRegistros; h++)
+                            {
+                                if (tf.CORRELATIVOGUIA == cont1.ToString() || tf.CORRELATIVOGUIA == cont2.ToString())
+                                {
+                                    a.loadAduanas(ar.CODIGOADUANA);
+                                    if (a.totalRegistros > 0)
+                                    {
+                                        ///////////nuevo/////////////  
+
+                                            
+                                        if (User.IsInRole("Supervisores"))
+                                            g2.loadFLujoGuiasSupervisores(g.CORRELATIVOGUIA, a.NOMBREADUANA, g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                                        else if (User.IsInRole("Monitoreo"))
+                                            g2.loadFLujoGuiasMonitoreo(g.CORRELATIVOGUIA, a.NOMBREADUANA, g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                                        else if (User.IsInRole("Jefe de Monitoreo"))
+                                            g2.loadFLujoGuiasMonitoreo(g.CORRELATIVOGUIA, a.NOMBREADUANA, g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                                        else if (User.IsInRole("Administradores"))
+                                            g2.loadFLujoGuias(g.CORRELATIVOGUIA, a.NOMBREADUANA); //Primero
+                                        else
+                                            g2.loadFLujoGuias("", "");
+                                        if (g2.totalRegistros > 0)
+                                        {
+                                            DataRow dr = dt.NewRow();
+                                            dr["CorrelativoGuia"] = g2.CORRELATIVOGUIA;
+                                            dr["Division"] = g2.TABLA.Rows[0]["Division"].ToString();
+                                            dr["NombreEmpresa"] = g2.TABLA.Rows[0]["NombreEmpresa"].ToString();
+                                            dr["CodigoRuta"] = g2.CODIGORUTA;
+                                            dr["CiudadOrigen"] = g2.TABLA.Rows[0]["CiudadOrigen"].ToString();
+                                            dr["CiudadDestino"] = g2.TABLA.Rows[0]["CiudadDestino"].ToString();
+                                            dr["Motorista"] = g2.TABLA.Rows[0]["Motorista"].ToString();
+                                            dr["CelMotoristaHN"] = g2.TABLA.Rows[0]["CelMotoristaHN"].ToString();
+                                            dr["PlacaCamion"] = g2.TABLA.Rows[0]["PlacaCamion"].ToString();
+                                            dr["Estado"] = g2.TABLA.Rows[0]["Estado"].ToString();
+                                            dr["CodEstado"] = g2.CODESTADO;
+                                            dr["CodigoAduana"] = ar.CODIGOADUANA;
+                                            //dr["Fecha"] = g2.FECHA;
+                                            //dr["Producto"] = g2.PRODUCTO;
+                                            //dr["Referencia1"] = g2.REFERENCIA1;
+                                            //dr["Referencia2"] = g2.REFERENCIA2;
+                                            //dr["Referencia3"] = g2.REFERENCIA3;
+                                            //dr["Referencia4"] = g2.REFERENCIA4;
+                                            //ERROR: dr["TipoFlujo"] = g2.TABLA.Rows[0]["CodTipoFlujo"].ToString();
+                                            dr["TipoFlujo"] = g2.TABLA.Rows[0]["TipoFlujo"].ToString();
+
+                                            ////Nuevos                                                                                     
+                                            dr["Factura"] = g2.TABLA.Rows[0]["Factura"].ToString();
+                                            dr["TelSV"] = g2.TABLA.Rows[0]["TelSV"].ToString();
+                                            dr["TelGT"] = g2.TABLA.Rows[0]["TelGT"].ToString();
+                                            dr["TelNIC"] = g2.TABLA.Rows[0]["TelNIC"].ToString();
+                                            dr["TelCR"] = g2.TABLA.Rows[0]["TelCR"].ToString(); 
+                                            dr["Proveedor"] = g2.TABLA.Rows[0]["Proveedor"].ToString();
+                                            dr["TelProv"] = g2.TABLA.Rows[0]["TelProv"].ToString();
+                                            dr["Propietario"] = g2.TABLA.Rows[0]["Propietario"].ToString();
+                                            dr["TelProp"] = g2.TABLA.Rows[0]["TelProp"].ToString();                                            
+
+                                            dt.Rows.Add(dr);
+                                            agregado = true;
+                                        }
+                                    }
+                                }
+                                cont1 += 2;
+                                cont2 += 2;
+                                ar.regSiguiente();
+                            }
+                            if (agregado == false)
+                            {//////////////////////////////////////
+                                ///////////nuevo/////////////
+                                if (User.IsInRole("Supervisores"))
+                                    g2.loadFLujoGuiasSupervisores(g.CORRELATIVOGUIA, "", g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                                else if (User.IsInRole("Monitoreo"))
+                                    g2.loadFLujoGuiasMonitoreo(g.CORRELATIVOGUIA, "", g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                                else if (User.IsInRole("Jefe de Monitoreo"))
+                                    g2.loadFLujoGuiasMonitoreo(g.CORRELATIVOGUIA, "", g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                                else if (User.IsInRole("Administradores"))
+                                    g2.loadFLujoGuias(g.CORRELATIVOGUIA, ""); //Segundo
+                                else
+                                    g2.loadFLujoGuias("", "");
+                                if (g2.totalRegistros > 0)
+                                {
+                                    DataRow dr = dt.NewRow();
+                                    dr["CorrelativoGuia"] = g2.CORRELATIVOGUIA;
+                                    dr["Division"] = g2.TABLA.Rows[0]["Division"].ToString();
+                                    dr["NombreEmpresa"] = g2.TABLA.Rows[0]["NombreEmpresa"].ToString();
+                                    dr["CodigoRuta"] = g2.CODIGORUTA;
+                                    dr["CiudadOrigen"] = g2.TABLA.Rows[0]["CiudadOrigen"].ToString();
+                                    dr["CiudadDestino"] = g2.TABLA.Rows[0]["CiudadDestino"].ToString();
+                                    dr["Motorista"] = g2.TABLA.Rows[0]["Motorista"].ToString();
+                                    dr["CelMotoristaHN"] = g2.TABLA.Rows[0]["CelMotoristaHN"].ToString();
+                                    dr["PlacaCamion"] = g2.TABLA.Rows[0]["PlacaCamion"].ToString();
+                                    dr["Estado"] = g2.TABLA.Rows[0]["Estado"].ToString();
+                                    dr["CodEstado"] = g2.CODESTADO;
+                                    dr["CodigoAduana"] = "";
+                                    //dr["Fecha"] = g2.FECHA;
+                                    //dr["Producto"] = g2.PRODUCTO;
+                                    //dr["Referencia1"] = g2.REFERENCIA1;
+                                    //dr["Referencia2"] = g2.REFERENCIA2;
+                                    //dr["Referencia3"] = g2.REFERENCIA3;
+                                    //dr["Referencia4"] = g2.REFERENCIA4;
+                                    //ERROR: dr["TipoFlujo"] = g2.TABLA.Rows[0]["CodTipoFlujo"].ToString();
+                                    dr["TipoFlujo"] = g2.TABLA.Rows[0]["TipoFlujo"].ToString();
+                                    
+                                    ////Nuevos                                      
+                                    dr["Factura"] = g2.TABLA.Rows[0]["Factura"].ToString();
+                                    dr["TelSV"] = g2.TABLA.Rows[0]["TelSV"].ToString();
+                                    dr["TelGT"] = g2.TABLA.Rows[0]["TelGT"].ToString();
+                                    dr["TelNIC"] = g2.TABLA.Rows[0]["TelNIC"].ToString();
+                                    dr["TelCR"] = g2.TABLA.Rows[0]["TelCR"].ToString();
+                                    dr["Proveedor"] = g2.TABLA.Rows[0]["Proveedor"].ToString();
+                                    dr["TelProv"] = g2.TABLA.Rows[0]["TelProv"].ToString();
+                                    dr["Propietario"] = g2.TABLA.Rows[0]["Propietario"].ToString();
+                                    dr["TelProp"] = g2.TABLA.Rows[0]["TelProp"].ToString();
+
+                                    dt.Rows.Add(dr);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            ///////////nuevo/////////////
+                            if (User.IsInRole("Supervisores"))
+                                g2.loadFLujoGuiasSupervisores(g.CORRELATIVOGUIA, "", g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                            else if (User.IsInRole("Monitoreo"))
+                                g2.loadFLujoGuiasMonitoreo(g.CORRELATIVOGUIA, "", g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                            else if (User.IsInRole("Jefe de Monitoreo"))
+                                g2.loadFLujoGuiasMonitoreo(g.CORRELATIVOGUIA, "", g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                            else if (User.IsInRole("Administradores"))
+                                g2.loadFLujoGuias(g.CORRELATIVOGUIA, ""); //Tercero
+                            else
+                                g2.loadFLujoGuias("", "");
+                            if (g2.totalRegistros > 0)
+                            {
+                                DataRow dr = dt.NewRow();
+                                dr["CorrelativoGuia"] = g2.CORRELATIVOGUIA;
+                                dr["Division"] = g2.TABLA.Rows[0]["Division"].ToString();
+                                dr["NombreEmpresa"] = g2.TABLA.Rows[0]["NombreEmpresa"].ToString();
+                                dr["CodigoRuta"] = g2.CODIGORUTA;
+                                dr["CiudadOrigen"] = g2.TABLA.Rows[0]["CiudadOrigen"].ToString();
+                                dr["CiudadDestino"] = g2.TABLA.Rows[0]["CiudadDestino"].ToString();
+                                dr["Motorista"] = g2.TABLA.Rows[0]["Motorista"].ToString();
+                                dr["CelMotoristaHN"] = g2.TABLA.Rows[0]["CelMotoristaHN"].ToString();
+                                dr["PlacaCamion"] = g2.TABLA.Rows[0]["PlacaCamion"].ToString();
+                                dr["Estado"] = g2.TABLA.Rows[0]["Estado"].ToString();
+                                dr["CodEstado"] = g2.CODESTADO;
+                                dr["CodigoAduana"] = "";
+                                //dr["Fecha"] = g2.FECHA;
+                                //dr["Producto"] = g2.PRODUCTO;
+                                //dr["Referencia1"] = g2.REFERENCIA1;
+                                //dr["Referencia2"] = g2.REFERENCIA2;
+                                //dr["Referencia3"] = g2.REFERENCIA3;
+                                //dr["Referencia4"] = g2.REFERENCIA4;
+                                //ERROR: dr["TipoFlujo"] = g2.TABLA.Rows[0]["CodTipoFlujo"].ToString();
+                                dr["TipoFlujo"] = g2.TABLA.Rows[0]["TipoFlujo"].ToString();
+
+                                ////Nuevos                                      
+                                dr["Factura"] = g2.TABLA.Rows[0]["Factura"].ToString();
+                                dr["TelSV"] = g2.TABLA.Rows[0]["TelSV"].ToString();
+                                dr["TelGT"] = g2.TABLA.Rows[0]["TelGT"].ToString();
+                                dr["TelNIC"] = g2.TABLA.Rows[0]["TelNIC"].ToString();
+                                dr["TelCR"] = g2.TABLA.Rows[0]["TelCR"].ToString();
+                                dr["Proveedor"] = g2.TABLA.Rows[0]["Proveedor"].ToString();
+                                dr["TelProv"] = g2.TABLA.Rows[0]["TelProv"].ToString();
+                                dr["Propietario"] = g2.TABLA.Rows[0]["Propietario"].ToString();
+                                dr["TelProp"] = g2.TABLA.Rows[0]["TelProp"].ToString();
+
+                                dt.Rows.Add(dr);
+                            }
+                        }
+                        //g.regSiguiente();
+                    }
+                    else
+                    {
+                        ///////////nuevo/////////////
+                        if (User.IsInRole("Supervisores"))
+                            g2.loadFLujoGuiasSupervisores(g.CORRELATIVOGUIA, "", g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                        else if (User.IsInRole("Monitoreo"))
+                            g2.loadFLujoGuiasMonitoreo(g.CORRELATIVOGUIA, "", g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                        else if (User.IsInRole("Jefe de Monitoreo"))
+                            g2.loadFLujoGuiasMonitoreo(g.CORRELATIVOGUIA, "", g.MONITOREOREMOTOINICIO, g.MONITOREOREMOTOFIN);
+                        else if (User.IsInRole("Administradores"))
+                            g2.loadFLujoGuias(g.CORRELATIVOGUIA, ""); //Cuarto
+                        else
+                            g2.loadFLujoGuias("", "");
+                        if (g2.totalRegistros > 0)
+                        {
+                            DataRow dr = dt.NewRow();
+                            dr["CorrelativoGuia"] = g2.CORRELATIVOGUIA;
+                            dr["Division"] = g2.TABLA.Rows[0]["Division"].ToString();
+                            dr["NombreEmpresa"] = g2.TABLA.Rows[0]["NombreEmpresa"].ToString();
+                            dr["CodigoRuta"] = g2.CODIGORUTA;
+                            dr["CiudadOrigen"] = g2.TABLA.Rows[0]["CiudadOrigen"].ToString();
+                            dr["CiudadDestino"] = g2.TABLA.Rows[0]["CiudadDestino"].ToString();
+                            dr["Motorista"] = g2.TABLA.Rows[0]["Motorista"].ToString();
+                            dr["CelMotoristaHN"] = g2.TABLA.Rows[0]["CelMotoristaHN"].ToString();
+                            dr["PlacaCamion"] = g2.TABLA.Rows[0]["PlacaCamion"].ToString();
+                            dr["Estado"] = g2.TABLA.Rows[0]["Estado"].ToString();
+                            dr["CodEstado"] = g2.CODESTADO;
+                            dr["CodigoAduana"] = "";
+                           // dr["Fecha"] = g2.FECHA;
+                           // dr["Producto"] = g2.PRODUCTO;
+                           // dr["Referencia1"] = g2.REFERENCIA1;
+                           // dr["Referencia2"] = g2.REFERENCIA2;
+                           // dr["Referencia3"] = g2.REFERENCIA3;
+                           // dr["Referencia4"] = g2.REFERENCIA4;
+                            //ERROR: dr["TipoFlujo"] = g2.TABLA.Rows[0]["CodTipoFlujo"].ToString();
+                            dr["TipoFlujo"] = g2.TABLA.Rows[0]["TipoFlujo"].ToString();
+                            
+                           // //Nuevos
+                            dr["Factura"] = g2.TABLA.Rows[0]["Factura"].ToString();
+                            dr["TelSV"] = g2.TABLA.Rows[0]["TelSV"].ToString();
+                            dr["TelGT"] = g2.TABLA.Rows[0]["TelGT"].ToString();
+                            dr["TelNIC"] = g2.TABLA.Rows[0]["TelNIC"].ToString();
+                            dr["TelCR"] = g2.TABLA.Rows[0]["TelCR"].ToString();
+                            dr["Proveedor"] = g2.TABLA.Rows[0]["Proveedor"].ToString();
+                            dr["TelProv"] = g2.TABLA.Rows[0]["TelProv"].ToString();
+                            dr["Propietario"] = g2.TABLA.Rows[0]["Propietario"].ToString();
+                            dr["TelProp"] = g2.TABLA.Rows[0]["TelProp"].ToString();
+
+                            dt.Rows.Add(dr);
+                        }
+                    }
+                    g.regSiguiente();
+                }
+            }
+            dt.AcceptChanges();
+            rgGuias.DataSource = dt;
             //rgGuias.DataBind();
         }
         catch (Exception) { }
@@ -146,30 +418,30 @@ public partial class FlujoGuias : Utilidades.PaginaBase
                     {
                         if (ar.totalRegistros == 0)
                         {
-                            if (edCodEstado.Value == "1")
+                            if (edCodEstado.Value.ToString() == "1")
                                 codEstadoAnterior = 0;
-                            else if (edCodEstado.Value == "5")
+                            else if (edCodEstado.Value.ToString() == "5")
                                 codEstadoAnterior = 1;
-                            else if (edCodEstado.Value == "8")
+                            else if (edCodEstado.Value.ToString() == "8")
                                 codEstadoAnterior = 5;
-                            else if (edCodEstado.Value == "10")
+                            else if (edCodEstado.Value.ToString() == "10")
                                 codEstadoAnterior = 8;
                             //else
                             //    codEstadoAnterior = int.Parse(edCodEstado.Value) - 1;
                         }
                         else
                         {
-                            if (edCodEstado.Value == "1")
+                            if (edCodEstado.Value.ToString() == "1")
                                 codEstadoAnterior = 0;
-                            else if (edCodEstado.Value == "5")
+                            else if (edCodEstado.Value.ToString() == "5")
                                 codEstadoAnterior = 1;
-                            else if (edCodEstado.Value == "6")
+                            else if (edCodEstado.Value.ToString() == "6")
                                 codEstadoAnterior = 5;
-                            else if (edCodEstado.Value == "7")
+                            else if (edCodEstado.Value.ToString() == "7")
                                 codEstadoAnterior = 6;
-                            else if (edCodEstado.Value == "8")
+                            else if (edCodEstado.Value.ToString() == "8")
                                 codEstadoAnterior = 7;
-                            else if (edCodEstado.Value == "10")
+                            else if (edCodEstado.Value.ToString() == "10")
                                 codEstadoAnterior = 8;
                             //else
                             //    codEstadoAnterior = int.Parse(edCodEstado.Value) - 1;
